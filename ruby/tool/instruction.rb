@@ -971,7 +971,7 @@ class RubyVM
     # insns_info.inc
     def insns_info_inc
       # insn_type_chars
-      insn_type_chars = TYPE_CHARS.map{|t, c|
+      insn_type_chars = TYPE_CHARS.to_a.sort.map{|t, c|
         "#define #{t} '#{c}'"
       }.join("\n")
 
