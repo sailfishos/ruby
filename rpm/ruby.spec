@@ -12,6 +12,10 @@ BuildRequires:  zlib-devel
 BuildRequires:  libX11-devel
 BuildRequires:  ca-certificates
 BuildRequires:  fdupes
+#!BuildIgnore: sb2-tools-qt5-armv6l-dependency-inject
+#!BuildIgnore: sb2-tools-qt5-armv7l-dependency-inject
+#!BuildIgnore: sb2-tools-qt5-armv7hl-dependency-inject
+#!BuildIgnore: sb2-tools-qt5-armv7tnhl-dependency-inject
 
 Provides:       rubygem-rake = 0.9.2.2
 Provides:       ruby(abi) = 1.9.3
@@ -70,6 +74,7 @@ Provides:       rubygems_with_buildroot_patch
 %description devel
 Development files to link against Ruby.
 
+%if 0%{?with_docs}
 %package doc-ri
 Summary:        Ruby Interactive Documentation
 Group:          Development/Languages
@@ -87,6 +92,7 @@ BuildArch:      noarch
 
 %description doc-html
 This package contains the HTML docs for ruby
+%endif
 
 %package examples
 Summary:        Example scripts for ruby
@@ -144,7 +150,7 @@ autoconf
   --enable-shared \
   --disable-rpath
 
-%{__make} miniruby V=1
+%{__make} miniruby V=0 %{?jobs:-j%jobs}
 
 echo -e "#!/bin/bash\n$PWD/miniruby -I$PWD/lib \"\$@\"" > ../miniruby
 %{__chmod} +x ../miniruby
@@ -155,9 +161,14 @@ autoconf
   --with-mantype=man \
   --enable-shared \
   --with-baseruby=$PWD/../miniruby \
+  %if 0%{?with_docs}
+  --enable-install-doc \
+  %else
+  --disable-install-doc \
+  %endif
   --disable-rpath
 
-%{__make} all V=1
+%{__make} all V=0 %{?jobs:-j%jobs}
 
 %install
 make install DESTDIR=%{buildroot}
@@ -172,7 +183,9 @@ make install DESTDIR=%{buildroot}
 %{__chmod} +x %{buildroot}/%{_libdir}/ruby/1.9.1/abbrev.rb
 %{__chmod} +x %{buildroot}/%{_libdir}/ruby/1.9.1/set.rb
 
+%if 0%{?with_docs}
 %fdupes -s %buildroot/%{_datadir}/ri
+%endif
 
 %if 0%{?run_tests}
 %check
@@ -216,7 +229,8 @@ make check V=1 ||:
 %exclude %{_libdir}/libruby-static.a
 %{_libdir}/pkgconfig/ruby-1.9.pc
 
+%if 0%{?with_docs}
 %files doc-ri
 %defattr(-,root,root,-)
 %{_datadir}/ri/
-
+%endif
