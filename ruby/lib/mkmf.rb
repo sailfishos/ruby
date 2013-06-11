@@ -1660,15 +1660,15 @@ VPATH = #{vpath.join(CONFIG['PATH_SEPARATOR'])}
   if destdir = CONFIG["prefix"][$dest_prefix_pattern, 1]
     mk << "\nDESTDIR = #{destdir}\n"
   end
-  CONFIG.each do |key, var|
+  CONFIG.keys.sort.each do |key|
     next unless /prefix$/ =~ key
-    mk << "#{key} = #{with_destdir(var)}\n"
+    mk << "#{key} = #{with_destdir(CONFIG[key])}\n"
   end
-  CONFIG.each do |key, var|
+  CONFIG.keys.sort.each do |key|
     next if /^abs_/ =~ key
     next if /^(?:src|top|hdr)dir$/ =~ key
     next unless /dir$/ =~ key
-    mk << "#{key} = #{with_destdir(var)}\n"
+    mk << "#{key} = #{with_destdir(CONFIG[key])}\n"
   end
   if !$extmk and !$configure_args.has_key?('--ruby') and
       sep = config_string('BUILD_FILE_SEPARATOR')
@@ -1901,9 +1901,9 @@ def create_makefile(target, srcprefix = nil)
 
   ext = ".#{$OBJEXT}"
   if not $objs
-    srcs = $srcs || Dir[File.join(srcdir, "*.{#{SRC_EXT.join(%q{,})}}")]
+    srcs = $srcs || Dir[File.join(srcdir, "*.{#{SRC_EXT.join(%q{,})}}")].sort
     objs = srcs.inject(Hash.new {[]}) {|h, f| h[File.basename(f, ".*") << ext] <<= f; h}
-    $objs = objs.keys
+    $objs = objs.keys.sort
     unless objs.delete_if {|b, f| f.size == 1}.empty?
       dups = objs.sort.map {|b, f|
         "#{b[/.*\./]}{#{f.collect {|n| n[/([^.]+)\z/]}.join(',')}}"
