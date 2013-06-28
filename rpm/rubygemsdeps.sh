@@ -15,7 +15,7 @@ case $1 in
 	*.gemspec)
 	    possible=${possible##*/}
 	    possible=${possible%.gemspec} 
-	    echo "$possible" | sed -e 's,^\(.*\)-,rubygem(\1) = ,'
+	    echo "$possible" | sed -e 's,^\(.*\)-,rubygem(\1) >= ,'
 	    ;;
 	esac
     done
@@ -24,7 +24,7 @@ case $1 in
     while read possible ; do
 	case "$possible" in
 	*.gemspec)
-	    echo "$possible" | sed -ne 's,.*/gems/,ruby(abi) = ,; s,/.*,,p'
+	    echo "$possible" | sed -ne 's,.*/gems/,ruby(abi) >= ,; s,/.*,,p'
 	    ;;
 	esac
     done
