@@ -1,6 +1,8 @@
+%bcond_with X11
+
 Name:           ruby
-Version:        @VERSION@
-Release:        0
+Version:    1.9.3.429
+Release:    mer3
 BuildRequires:  bison
 BuildRequires:  gdbm-devel
 BuildRequires:  libffi-devel
@@ -9,9 +11,11 @@ BuildRequires:  ncurses-devel
 BuildRequires:  openssl-devel
 BuildRequires:  readline-devel
 BuildRequires:  zlib-devel
-BuildRequires:  libX11-devel
 BuildRequires:  ca-certificates
 BuildRequires:  fdupes
+%if %{with X11}
+BuildRequires:  libX11-devel
+%endif
 #!BuildIgnore: sb2-tools-qt5-armv6l-dependency-inject
 #!BuildIgnore: sb2-tools-qt5-armv7l-dependency-inject
 #!BuildIgnore: sb2-tools-qt5-armv7hl-dependency-inject
@@ -165,6 +169,9 @@ autoconf
   --enable-install-doc \
   %else
   --disable-install-doc \
+  %endif
+  %if ! %{with X11}
+  --without-X11 \
   %endif
   --disable-rpath
 
