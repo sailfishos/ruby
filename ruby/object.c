@@ -285,7 +285,7 @@ rb_obj_clone(VALUE obj)
     }
     clone = rb_obj_alloc(rb_obj_class(obj));
     RBASIC(clone)->klass = rb_singleton_class_clone(obj);
-    RBASIC(clone)->flags = (RBASIC(obj)->flags | FL_TEST(clone, FL_TAINT) | FL_TEST(clone, FL_UNTRUSTED)) & ~(FL_FREEZE|FL_FINALIZE|FL_MARK);
+    RBASIC(clone)->flags = (RBASIC(obj)->flags | FL_TEST(clone, FL_TAINT) | FL_TEST(clone, FL_UNTRUSTED)) & ~(FL_FREEZE|FL_FINALIZE|FL_MARK) | (RBASIC(clone)->flags&FL_MARK);
     init_copy(clone, obj);
     rb_funcall(clone, id_init_clone, 1, obj);
     RBASIC(clone)->flags |= RBASIC(obj)->flags & FL_FREEZE;
@@ -1234,7 +1234,8 @@ rb_obj_not_match(VALUE obj1, VALUE obj2)
  *  call-seq:
  *     obj <=> other -> 0 or nil
  *
- *  Returns 0 if obj === other, otherwise nil.
+ * Returns 0 if +obj+ and +other+ are the same object
+ * or <code>obj == other</code>, otherwise nil.
  */
 static VALUE
 rb_obj_cmp(VALUE obj1, VALUE obj2)

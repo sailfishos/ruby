@@ -701,9 +701,9 @@ parse_time(VALUE str, VALUE hash)
 		   "("
 		     "(?:gmt|utc?)?[-+]\\d+(?:[,.:]\\d+(?::\\d+)?)?"
 		   "|"
-		     "[[:alpha:].\\s]+(?:standard|daylight)\\stime\\b"
+		     "(?-i:[[:alpha:].\\s]+)(?:standard|daylight)\\stime\\b"
 		   "|"
-		     "[[:alpha:]]+(?:\\sdst)?\\b"
+		     "(?-i:[[:alpha:]]+)(?:\\sdst)?\\b"
 		   ")"
 		")?";
     static VALUE pat = Qnil;
@@ -2147,7 +2147,9 @@ rfc2822_cb(VALUE m, VALUE hash)
 	    s[i] = rb_reg_nth_match(i, m);
     }
 
-    set_hash("wday", INT2FIX(day_num(s[1])));
+    if (!NIL_P(s[1])) {
+	set_hash("wday", INT2FIX(day_num(s[1])));
+    }
     set_hash("mday", str2num(s[2]));
     set_hash("mon", INT2FIX(mon_num(s[3])));
     y = str2num(s[4]);
