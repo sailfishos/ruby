@@ -102,6 +102,15 @@ bigzero_p(VALUE x)
 # define RRATIONAL_NEGATIVE_P(x) RTEST(rb_funcall((x), '<', 1, INT2FIX(0)))
 #endif
 
+#ifdef PRIsVALUE
+# define RB_OBJ_CLASSNAME(obj) rb_obj_class(obj)
+# define RB_OBJ_STRING(obj) (obj)
+#else
+# define PRIsVALUE "s"
+# define RB_OBJ_CLASSNAME(obj) rb_obj_classname(obj)
+# define RB_OBJ_STRING(obj) StringValueCStr(obj)
+#endif
+
 /*
  * ================== Ruby Interface part ==========================
  */
@@ -2355,7 +2364,9 @@ BigDecimal_new(int argc, VALUE *argv, VALUE self)
 	/* fall through */
       case T_RATIONAL:
 	if (NIL_P(nFig)) {
-	    rb_raise(rb_eArgError, "can't omit precision for a Rational.");
+	    rb_raise(rb_eArgError,
+		     "can't omit precision for a %"PRIsVALUE".",
+		     RB_OBJ_CLASSNAME(iniValue));
 	}
 	return ToValue(GetVpValueWithPrec(iniValue, mf, 1));
 
@@ -2554,7 +2565,7 @@ BigMath_s_exp(VALUE klass, VALUE x, VALUE vprec)
     else if (vx == NULL) {
 	cannot_be_coerced_into_BigDecimal(rb_eArgError, x);
     }
-    RB_GC_GUARD(vx->obj);
+    x = RB_GC_GUARD(vx->obj);
 
     n = prec + rmpd_double_figures();
     negative = VpGetSign(vx) < 0;

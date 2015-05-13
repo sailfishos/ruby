@@ -442,6 +442,11 @@ rb_hash_s_try_convert(VALUE dummy, VALUE hash)
     return rb_check_hash_type(hash);
 }
 
+struct rehash_arg {
+    VALUE hash;
+    st_table *tbl;
+};
+
 static int
 rb_hash_rehash_i(VALUE key, VALUE value, VALUE arg)
 {
@@ -474,6 +479,7 @@ rb_hash_rehash_i(VALUE key, VALUE value, VALUE arg)
 static VALUE
 rb_hash_rehash(VALUE hash)
 {
+    VALUE tmp;
     st_table *tbl;
 
     if (RHASH(hash)->iter_lev > 0) {
@@ -482,10 +488,14 @@ rb_hash_rehash(VALUE hash)
     rb_hash_modify_check(hash);
     if (!RHASH(hash)->ntbl)
         return hash;
+    tmp = hash_alloc(0);
     tbl = st_init_table_with_size(RHASH(hash)->ntbl->type, RHASH(hash)->ntbl->num_entries);
+    RHASH(tmp)->ntbl = tbl;
+
     rb_hash_foreach(hash, rb_hash_rehash_i, (VALUE)tbl);
     st_free_table(RHASH(hash)->ntbl);
     RHASH(hash)->ntbl = tbl;
+    RHASH(tmp)->ntbl = 0;
 
     return hash;
 }
@@ -824,18 +834,6 @@ struct shift_var {
 };
 
 static int
-shift_i(VALUE key, VALUE value, VALUE arg)
-{
-    struct shift_var *var = (struct shift_var *)arg;
-
-    if (key == Qundef) return ST_CONTINUE;
-    if (var->key != Qundef) return ST_STOP;
-    var->key = key;
-    var->val = value;
-    return ST_DELETE;
-}
-
-static int
 shift_i_safe(VALUE key, VALUE value, VALUE arg)
 {
     struct shift_var *var = (struct shift_var *)arg;
@@ -866,16 +864,20 @@ rb_hash_shift(VALUE hash)
 
     rb_hash_modify(hash);
     var.key = Qundef;
-    rb_hash_foreach(hash, RHASH(hash)->iter_lev > 0 ? shift_i_safe : shift_i,
-		    (VALUE)&var);
-
-    if (var.key != Qundef) {
-	if (RHASH(hash)->iter_lev > 0) {
-	    rb_hash_delete_key(hash, var.key);
+    if (RHASH(hash)->iter_lev == 0) {
+	if (st_shift(RHASH(hash)->ntbl, &var.key, &var.val)) {
+	    return rb_assoc_new(var.key, var.val);
 	}
-	return rb_assoc_new(var.key, var.val);
     }
-    else if (FL_TEST(hash, HASH_PROC_DEFAULT)) {
+    else {
+	rb_hash_foreach(hash, shift_i_safe, (VALUE)&var);
+
+	if (var.key != Qundef) {
+	    rb_hash_delete_key(hash, var.key);
+	    return rb_assoc_new(var.key, var.val);
+	}
+    }
+    if (FL_TEST(hash, HASH_PROC_DEFAULT)) {
 	return rb_funcall(RHASH_IFNONE(hash), id_yield, 2, hash, Qnil);
     }
     else {
