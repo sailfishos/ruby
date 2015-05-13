@@ -1,8 +1,8 @@
 %bcond_with X11
 
 Name:           ruby
-Version:    1.9.3.429
-Release:    mer3
+Version:    1.9.3.551
+Release:    mer1
 BuildRequires:  bison
 BuildRequires:  gdbm-devel
 BuildRequires:  libffi-devel
