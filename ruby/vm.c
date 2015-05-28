@@ -1744,7 +1744,11 @@ rb_thread_mark(void *ptr)
 		if (iseq) {
 		    rb_gc_mark(RUBY_VM_NORMAL_ISEQ_P(iseq) ? iseq->self : (VALUE)iseq);
 		}
-		if (cfp->me) ((rb_method_entry_t *)cfp->me)->mark = 1;
+		if (cfp->me) {
+		    /* TODO: marking `me' can be more sophisticated way */
+		    ((rb_method_entry_t *)cfp->me)->mark = 1;
+		    rb_mark_method_entry(cfp->me);
+		}
 		cfp = RUBY_VM_PREVIOUS_CONTROL_FRAME(cfp);
 	    }
 	}
@@ -2109,6 +2113,8 @@ Init_VM(void)
     rb_define_method_id(klass, id_core_define_method, m_core_define_method, 3);
     rb_define_method_id(klass, id_core_define_singleton_method, m_core_define_singleton_method, 3);
     rb_define_method_id(klass, id_core_set_postexe, m_core_set_postexe, 1);
+    rb_define_method_id(klass, idProc, rb_block_proc, 0);
+    rb_define_method_id(klass, idLambda, rb_block_lambda, 0);
     rb_obj_freeze(fcore);
     rb_gc_register_mark_object(fcore);
     rb_mRubyVMFrozenCore = fcore;

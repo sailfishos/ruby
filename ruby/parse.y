@@ -102,6 +102,7 @@ struct local_vars {
     struct vtable *vars;
     struct vtable *used;
     struct local_vars *prev;
+    stack_type cmdargs;
 };
 
 #define DVARS_INHERIT ((void*)1)
@@ -277,8 +278,6 @@ struct parser_params {
 static int parser_yyerror(struct parser_params*, const char*);
 #define yyerror(msg) parser_yyerror(parser, (msg))
 
-#define YYLEX_PARAM parser
-
 #define lex_strterm		(parser->parser_lex_strterm)
 #define lex_state		(parser->parser_lex_state)
 #define cond_stack		(parser->parser_cond_stack)
@@ -319,7 +318,11 @@ static int parser_yyerror(struct parser_params*, const char*);
 #define ruby_coverage		(parser->coverage)
 #endif
 
+#if YYPURE
 static int yylex(void*, void*);
+#else
+static int yylex(void*);
+#endif
 
 #ifndef RIPPER
 #define yyparse ruby_yyparse
@@ -610,7 +613,8 @@ static void token_info_pop(struct parser_params*, const char *token);
 #endif
 %}
 
-%pure_parser
+%pure-parser
+%lex-param {struct parser_params *parser}
 %parse-param {struct parser_params *parser}
 
 %union {
@@ -6004,6 +6008,70 @@ ripper_flush_string_content(struct parser_params *parser, rb_encoding *enc)
 #define flush_string_content(enc) ((void)(enc))
 #endif
 
+RUBY_FUNC_EXPORTED const unsigned int ruby_global_name_punct_bits[(0x7e - 0x20 + 31) / 32];
+/* this can be shared with ripper, since it's independent from struct
+ * parser_params. */
+#ifndef RIPPER
+#define BIT(c, idx) (((c) / 32 - 1 == idx) ? (1U << ((c) % 32)) : 0)
+#define SPECIAL_PUNCT(idx) ( \
+	BIT('~', idx) | BIT('*', idx) | BIT('$', idx) | BIT('?', idx) | \
+	BIT('!', idx) | BIT('@', idx) | BIT('/', idx) | BIT('\\', idx) | \
+	BIT(';', idx) | BIT(',', idx) | BIT('.', idx) | BIT('=', idx) | \
+	BIT(':', idx) | BIT('<', idx) | BIT('>', idx) | BIT('\"', idx) | \
+	BIT('&', idx) | BIT('`', idx) | BIT('\'', idx) | BIT('+', idx) | \
+	BIT('0', idx))
+const unsigned int ruby_global_name_punct_bits[] = {
+    SPECIAL_PUNCT(0),
+    SPECIAL_PUNCT(1),
+    SPECIAL_PUNCT(2),
+};
+#undef BIT
+#undef SPECIAL_PUNCT
+#endif
+
+static inline int
+is_global_name_punct(const char c)
+{
+    if (c <= 0x20 || 0x7e < c) return 0;
+    return (ruby_global_name_punct_bits[(c - 0x20) / 32] >> (c % 32)) & 1;
+}
+
+static int
+parser_peek_variable_name(struct parser_params *parser)
+{
+    int c;
+    const char *p = lex_p;
+
+    if (p + 1 >= lex_pend) return 0;
+    c = *p++;
+    switch (c) {
+      case '$':
+	if ((c = *p) == '-') {
+	    if (++p >= lex_pend) return 0;
+	    c = *p;
+	}
+	else if (is_global_name_punct(c) || ISDIGIT(c)) {
+	    return tSTRING_DVAR;
+	}
+	break;
+      case '@':
+	if ((c = *p) == '@') {
+	    if (++p >= lex_pend) return 0;
+	    c = *p;
+	}
+	break;
+      case '{':
+	lex_p = p;
+	command_start = TRUE;
+	return tSTRING_DBEG;
+      default:
+	return 0;
+    }
+    if (!ISASCII(c) || c == '_' || ISALPHA(c))
+	return tSTRING_DVAR;
+    return 0;
+}
+
 static int
 parser_parse_string(struct parser_params *parser, NODE *quote)
 {
@@ -6034,15 +6102,10 @@ parser_parse_string(struct parser_params *parser, NODE *quote)
     }
     newtok();
     if ((func & STR_FUNC_EXPAND) && c == '#') {
-	switch (c = nextc()) {
-	  case '$':
-	  case '@':
-	    pushback(c);
-	    return tSTRING_DVAR;
-	  case '{':
-	    return tSTRING_DBEG;
-	}
+	int t = parser_peek_variable_name(parser);
+	if (t) return t;
 	tokadd('#');
+	c = nextc();
     }
     pushback(c);
     if (tokadd_string(func, term, paren, &quote->nd_nest,
@@ -6249,15 +6312,10 @@ parser_here_document(struct parser_params *parser, NODE *here)
 	/*	int mb = ENC_CODERANGE_7BIT, *mbp = &mb;*/
 	newtok();
 	if (c == '#') {
-	    switch (c = nextc()) {
-	      case '$':
-	      case '@':
-		pushback(c);
-		return tSTRING_DVAR;
-	      case '{':
-		return tSTRING_DBEG;
-	    }
+	    int t = parser_peek_variable_name(parser);
+	    if (t) return t;
 	    tokadd('#');
+	    c = nextc();
 	}
 	do {
 	    pushback(c);
@@ -7743,7 +7801,8 @@ parser_yylex(struct parser_params *parser)
 	  default:
 	    if (!parser_is_identchar()) {
 		pushback(c);
-		return '$';
+		compile_error(PARSER_ARG "`$%c' is not allowed as a global variable name", c);
+		return 0;
 	    }
 	  case '0':
 	    tokadd('$');
@@ -7758,7 +7817,8 @@ parser_yylex(struct parser_params *parser)
 	    tokadd('@');
 	    c = nextc();
 	}
-	if (c != -1 && ISDIGIT(c)) {
+	if (c != -1 && (ISDIGIT(c) || !parser_is_identchar())) {
+	    pushback(c);
 	    if (tokidx == 1) {
 		compile_error(PARSER_ARG "`@%c' is not allowed as an instance variable name", c);
 	    }
@@ -7766,10 +7826,6 @@ parser_yylex(struct parser_params *parser)
 		compile_error(PARSER_ARG "`@@%c' is not allowed as a class variable name", c);
 	    }
 	    return 0;
-	}
-	if (!parser_is_identchar()) {
-	    pushback(c);
-	    return '@';
 	}
 	break;
 
@@ -9140,6 +9196,8 @@ local_push_gen(struct parser_params *parser, int inherit_dvars)
     local->args = vtable_alloc(0);
     local->vars = vtable_alloc(inherit_dvars ? DVARS_INHERIT : DVARS_TOPSCOPE);
     local->used = !inherit_dvars && RTEST(ruby_verbose) ? vtable_alloc(0) : 0;
+    local->cmdargs = cmdarg_stack;
+    cmdarg_stack = 0;
     lvtbl = local;
 }
 
@@ -9153,6 +9211,7 @@ local_pop_gen(struct parser_params *parser)
     }
     vtable_free(lvtbl->args);
     vtable_free(lvtbl->vars);
+    cmdarg_stack = lvtbl->cmdargs;
     xfree(lvtbl);
     lvtbl = local;
 }
@@ -9563,8 +9622,6 @@ static const struct {
 } op_tbl[] = {
     {tDOT2,	".."},
     {tDOT3,	"..."},
-    {'+',	"+(binary)"},
-    {'-',	"-(binary)"},
     {tPOW,	"**"},
     {tUPLUS,	"+@"},
     {tUMINUS,	"-@"},
@@ -9669,22 +9726,17 @@ is_special_global_name(const char *m, const char *e, rb_encoding *enc)
     int mb = 0;
 
     if (m >= e) return 0;
-    switch (*m) {
-      case '~': case '*': case '$': case '?': case '!': case '@':
-      case '/': case '\\': case ';': case ',': case '.': case '=':
-      case ':': case '<': case '>': case '\"':
-      case '&': case '`': case '\'': case '+':
-      case '0':
+    if (is_global_name_punct(*m)) {
 	++m;
-	break;
-      case '-':
+    }
+    else if (*m == '-') {
 	++m;
 	if (m < e && is_identchar(m, e, enc)) {
 	    if (!ISASCII(*m)) mb = 1;
 	    m += rb_enc_mbclen(m, e, enc);
 	}
-	break;
-      default:
+    }
+    else {
 	if (!rb_enc_isdigit(*m, enc)) return 0;
 	do {
 	    if (!ISASCII(*m)) mb = 1;

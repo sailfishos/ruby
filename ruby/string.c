@@ -1337,6 +1337,7 @@ rb_str_modify_expand(VALUE str, long expand)
 	long capa = len + expand;
 	if (!STR_EMBED_P(str)) {
 	    REALLOC_N(RSTRING(str)->as.heap.ptr, char, capa+1);
+	    STR_UNSET_NOCAPA(str);
 	    RSTRING(str)->as.heap.aux.capa = capa;
 	}
 	else if (capa > RSTRING_EMBED_LEN_MAX) {
@@ -1749,6 +1750,13 @@ rb_str_unlocktmp(VALUE str)
     }
     FL_UNSET(str, STR_TMPLOCK);
     return str;
+}
+
+VALUE
+rb_str_locktmp_ensure(VALUE str, VALUE (*func)(VALUE), VALUE arg)
+{
+    rb_str_locktmp(str);
+    return rb_ensure(func, arg, rb_str_unlocktmp, str);
 }
 
 void
@@ -7512,7 +7520,7 @@ sym_to_sym(VALUE sym)
 }
 
 static VALUE
-sym_call(VALUE args, VALUE sym, int argc, VALUE *argv)
+sym_call(VALUE args, VALUE sym, int argc, VALUE *argv, VALUE passed_proc)
 {
     VALUE obj;
 
@@ -7520,7 +7528,7 @@ sym_call(VALUE args, VALUE sym, int argc, VALUE *argv)
 	rb_raise(rb_eArgError, "no receiver given");
     }
     obj = argv[0];
-    return rb_funcall_passing_block(obj, (ID)sym, argc - 1, argv + 1);
+    return rb_funcall_with_block(obj, (ID)sym, argc - 1, argv + 1, passed_proc);
 }
 
 /*

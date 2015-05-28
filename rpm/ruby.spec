@@ -1,8 +1,8 @@
 %bcond_with X11
 
 Name:           ruby
-Version:    1.9.3.429
-Release:    mer5
+Version:    1.9.3.551
+Release:    mer1
 BuildRequires:  bison
 BuildRequires:  gdbm-devel
 BuildRequires:  libffi-devel
@@ -32,8 +32,6 @@ Source4:        rubygems.attr
 Source5:        rubygemsdeps.sh
 Source6:        ruby.macros
 Source7:        gem_install_wrapper.sh
-
-Patch1:         MRI-41808.patch
 
 Summary:        An Interpreted Object-Oriented Scripting Language
 License:        BSD-2-Clause or Ruby
@@ -146,8 +144,6 @@ BeOS, and more)
 
 %prep
 %setup -q -n %{name}-%{version}/%{name}
-
-%patch1 -p1 -b .MRI-41808
 
 %build
 
