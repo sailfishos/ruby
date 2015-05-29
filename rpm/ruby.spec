@@ -32,6 +32,7 @@ Source4:        rubygems.attr
 Source5:        rubygemsdeps.sh
 Source6:        ruby.macros
 Source7:        gem_install_wrapper.sh
+Source8:        ruby-rpmlintrc
 
 Summary:        An Interpreted Object-Oriented Scripting Language
 License:        BSD-2-Clause or Ruby
