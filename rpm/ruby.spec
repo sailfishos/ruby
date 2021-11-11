@@ -216,6 +216,8 @@ Patch19: ruby-2.7.1-Timeout-the-test_bug_reporter_add-witout-raising-err.patch
 # https://github.com/ruby/openssl/pull/216
 Patch22: ruby-2.6.0-config-support-include-directive.patch
 
+#Fix build failure with newer bison
+Patch23: 0001-Bison-3.59.1-folds-yydestruct-function-header.patch
 
 Requires: %{name}-libs%{?_isa} = %{version}-%{release}
 Suggests: rubypick
