@@ -1,7 +1,7 @@
 # We don't use fedoras version logic
 #%global major_version 2
 #%global minor_version 7
-#%global teeny_version 1
+#%global teeny_version 6
 #%global major_minor_version %{major_version}.%{minor_version}
 
 #%global ruby_version %{major_minor_version}.%{teeny_version}
@@ -59,7 +59,7 @@
 %global rubygems_dir %{_datadir}/rubygems
 
 # Bundled libraries versions
-%global rubygems_version 3.1.2
+%global rubygems_version 3.1.4
 %global rubygems_molinillo_version 0.5.7
 
 # Default gems.
@@ -73,13 +73,13 @@
 %global bigdecimal_version 2.0.0
 %global did_you_mean_version 1.4.0
 %global io_console_version 0.5.6
-%global irb_version 1.2.3
+%global irb_version 1.2.6
 %global json_version 2.3.0
 %global net_telnet_version 0.2.0
-%global openssl_version 2.1.2
+%global openssl_version 2.1.3
 %global psych_version 3.1.0
 %global racc_version 1.4.16
-%global rdoc_version 6.2.1
+%global rdoc_version 6.2.1.1
 %global xmlrpc_version 0.3.0
 
 # Bundled gems.
@@ -120,7 +120,7 @@
 
 Summary: An interpreter of object-oriented scripting language
 Name: ruby
-Version: 2.7.1
+Version: 2.7.6
 %global ruby_version %version
 Release: 1
 # Public Domain for example for: include/ruby/st.h, strftime.c, missing/*, ...
@@ -185,39 +185,16 @@ Patch9: ruby-2.3.1-Rely-on-ldd-to-detect-glibc.patch
 # Revert commit which breaks bundled net-http-persistent version check.
 # https://github.com/drbrain/net-http-persistent/pull/109
 Patch10: ruby-2.7.0-Remove-RubyGems-dependency.patch
-# Fix lchmod test failures.
-# https://github.com/ruby/ruby/commit/a19228f878d955eaf2cce086bcf53f46fdf894b9
-Patch11: ruby-2.8.0-Brace-the-fact-that-lchmod-can-EOPNOTSUPP.patch
-# https://github.com/ruby/ruby/commit/72c02aa4b79731c7f25c9267f74b347f1946c704
-Patch12: ruby-2.8.0-Moved-not-implemented-method-tests.patch
 # Prevent issues with openssl loading when RubyGems are disabled.
 # https://github.com/ruby/openssl/pull/242
 Patch13: ruby-2.8.0-remove-unneeded-gem-require-for-ipaddr.patch
-# Fix compatibility with libyaml 0.2.5
-# https://bugs.ruby-lang.org/issues/16949
-Patch14: ruby-2.7.2-psych-fix-yaml-tests.patch
-# Fix `require` behavior allowing to load libraries multiple times.
-# https://github.com/rubygems/rubygems/issues/3647
-# Because there were multiple fixes in `Kernel.require` in recent months,
-# pickup all the changes one by one instead of squashing them.
-# https://github.com/rubygems/rubygems/pull/3124
-Patch15: rubygems-3.1.3-Fix-I-require-priority.patch
-# https://github.com/rubygems/rubygems/pull/3133
-Patch16: rubygems-3.1.3-Improve-require.patch
-# https://github.com/rubygems/rubygems/pull/3153
-Patch17: rubygems-3.1.3-Revert-Exclude-empty-suffix-from-I-require-loop.patch
-# https://github.com/rubygems/rubygems/pull/3639
-Patch18: rubygems-3.1.3-Fix-correctness-and-performance-regression-in-require.patch
 # Avoid possible timeout errors in TestBugReporter#test_bug_reporter_add.
 # https://bugs.ruby-lang.org/issues/16492
 Patch19: ruby-2.7.1-Timeout-the-test_bug_reporter_add-witout-raising-err.patch
-
-# Add support for .include directive used by OpenSSL config files.
-# https://github.com/ruby/openssl/pull/216
-Patch22: ruby-2.6.0-config-support-include-directive.patch
-
-#Fix build failure with newer bison
-Patch23: 0001-Bison-3.59.1-folds-yydestruct-function-header.patch
+# Backport: continue just with warning if failed to fetch notes
+Patch20: ruby-3.1.0-vcs.rb-continue-just-with-warning-if-failed-to-fetch.patch
+# Fix armv7hl build
+Patch21: ruby-3.0.0-Revert-Bug-17021-Make-host_-values-consistent-with-t.patch
 
 Requires: %{name}-libs%{?_isa} = %{version}-%{release}
 Suggests: rubypick
@@ -647,11 +624,10 @@ autoconf
         --enable-multiarch
 # Q= makes the build output more verbose and allows to check Fedora
 # compiler options.
-make %{?_smp_mflags} COPY="cp -p" Q=
+%make_build COPY="cp -p" Q=
 
 %install
-rm -rf %{buildroot}
-make install DESTDIR=%{buildroot}
+%make_install
 
 # Rename ruby/config.h to ruby/config-<arch>.h to avoid file conflicts on
 # multilib systems and install config.h wrapper
@@ -1157,9 +1133,9 @@ MSPECOPTS="$MSPECOPTS -P 'File.lchmod raises a NotImplementedError when called'"
 
 %files default-gems
 %{gem_dir}/specifications/default/benchmark-0.1.0.gemspec
-%{gem_dir}/specifications/default/cgi-0.1.0.gemspec
+%{gem_dir}/specifications/default/cgi-0.1.0.1.gemspec
 %{gem_dir}/specifications/default/csv-3.1.2.gemspec
-%{gem_dir}/specifications/default/date-3.0.0.gemspec
+%{gem_dir}/specifications/default/date-3.0.3.gemspec
 #%{gem_dir}/specifications/default/dbm-1.1.0.gemspec
 %{gem_dir}/specifications/default/delegate-0.1.0.gemspec
 %{gem_dir}/specifications/default/did_you_mean-%{did_you_mean_version}.gemspec
@@ -1184,8 +1160,8 @@ MSPECOPTS="$MSPECOPTS -P 'File.lchmod raises a NotImplementedError when called'"
 %{gem_dir}/specifications/default/racc-%{racc_version}.gemspec
 %{gem_dir}/specifications/default/readline-0.0.2.gemspec
 %{gem_dir}/specifications/default/readline-ext-0.1.0.gemspec
-%{gem_dir}/specifications/default/reline-0.1.3.gemspec
-%{gem_dir}/specifications/default/rexml-3.2.3.gemspec
+%{gem_dir}/specifications/default/reline-0.1.5.gemspec
+%{gem_dir}/specifications/default/rexml-3.2.3.1.gemspec
 %{gem_dir}/specifications/default/rss-0.2.8.gemspec
 %{gem_dir}/specifications/default/sdbm-1.0.0.gemspec
 %{gem_dir}/specifications/default/singleton-0.1.0.gemspec
@@ -1194,7 +1170,7 @@ MSPECOPTS="$MSPECOPTS -P 'File.lchmod raises a NotImplementedError when called'"
 %{gem_dir}/specifications/default/timeout-0.1.0.gemspec
 %{gem_dir}/specifications/default/tracer-0.1.0.gemspec
 %{gem_dir}/specifications/default/uri-0.10.0.gemspec
-%{gem_dir}/specifications/default/webrick-1.6.0.gemspec
+%{gem_dir}/specifications/default/webrick-1.6.1.gemspec
 %{gem_dir}/specifications/default/yaml-0.1.0.gemspec
 %{gem_dir}/specifications/default/zlib-1.1.0.gemspec
 
