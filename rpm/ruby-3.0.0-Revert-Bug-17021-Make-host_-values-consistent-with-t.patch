@@ -1,0 +1,31 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Matti=20Lehtim=C3=A4ki?= <matti.lehtimaki@jolla.com>
+Date: Mon, 17 Oct 2022 20:40:23 +0300
+Subject: [PATCH] Revert "[Bug #17021] Make host_* values consistent with
+ target_*"
+
+This reverts commit 43a9a974e276dc49b03ec81ccace0adb534a3d20.
+---
+ configure.ac | 7 +------
+ 1 file changed, 1 insertion(+), 6 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index 826a688871d50be19647d2721d876f9ac6e61825..86dfad5898456d9dc7ba550faeab875ca6435c05 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -316,14 +316,9 @@ AC_SUBST(CC_VERSION_MESSAGE, $cc_version_message)
+ : ${DLDFLAGS="$LDFLAGS"}
+ 
+ RUBY_UNIVERSAL_ARCH
+-AS_IF([test "$target_cpu" != "$host_cpu" -a "$GCC" = yes -a "$cross_compiling" = no -a "${universal_binary:-no}" = no], [
++AS_IF([test "$target_cpu" != "$host_cpu" -a "$GCC" = yes -a "$cross_compiling" = no -a "$universal_binary" = no], [
+     RUBY_DEFAULT_ARCH("$target_cpu")
+ ])
+-host_os=$target_os
+-host_vendor=$target_vendor
+-host_cpu=$target_cpu
+-host=$target
+-host_alias=$target_alias
+ 
+ AS_CASE(["$target_os"], [darwin*], [
+ if libtool 2>&1 | grep no_warning_for_no_symbols > /dev/null; then

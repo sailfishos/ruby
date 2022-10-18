@@ -968,6 +968,7 @@ static int looking_at_eol_p(struct parser_params *p);
 
 %expect 0
 %define api.pure
+%define parse.error verbose
 %lex-param {struct parser_params *p}
 %parse-param {struct parser_params *p}
 %initial-action
@@ -2022,10 +2023,6 @@ fname		: tIDENTIFIER
 			$$ = $1;
 		    }
 		| reswords
-		    {
-			SET_LEX_STATE(EXPR_ENDFN);
-			$$ = $1;
-		    }
 		;
 
 fitem		: fname
@@ -2420,6 +2417,32 @@ paren_args	: '(' opt_call_args rparen
 			$$ = $2;
 #endif
 			{VALUE v1,v2;v1=escape_Qundef($2);v2=dispatch1(arg_paren,v1);$$=v2;}
+		    }
+		| '(' args ',' args_forward rparen
+		    {
+			if (!local_id(p, idFWD_REST) ||
+#if idFWD_KWREST
+			    !local_id(p, idFWD_KWREST) ||
+#endif
+			    !local_id(p, idFWD_BLOCK)) {
+			    compile_error(p, "unexpected ...");
+			    $$ = Qnone;
+			}
+			else {
+#if 0
+			    NODE *splat = NEW_SPLAT(NEW_LVAR(idFWD_REST, &@4), &@4);
+#if idFWD_KWREST
+			    NODE *kwrest = list_append(p, NEW_LIST(0, &@4), NEW_LVAR(idFWD_KWREST, &@4));
+#endif
+			    NODE *block = NEW_BLOCK_PASS(NEW_LVAR(idFWD_BLOCK, &@4), &@4);
+			    $$ = rest_arg_append(p, $2, splat, &@$);
+#if idFWD_KWREST
+			    $$ = arg_append(p, $$, new_hash(p, kwrest, &@4), &@4);
+#endif
+			    $$ = arg_blk_pass($$, block);
+#endif
+			{VALUE v1,v2,v3,v4,v5;v1=$2;v2=$4;v3=dispatch2(args_add,v1,v2);v4=v3;v5=dispatch1(arg_paren,v4);$$=v5;}
+			}
 		    }
 		| '(' args_forward rparen
 		    {
@@ -2875,11 +2898,9 @@ primary		: literal
 			ID id = internal_id(p);
 			NODE *m = NEW_ARGS_AUX(0, 0, &NULL_LOC);
 			NODE *args, *scope, *internal_var = NEW_DVAR(id, &@2);
-			VALUE tmpbuf = rb_imemo_tmpbuf_auto_free_pointer();
 			ID *tbl = ALLOC_N(ID, 3);
-			rb_imemo_tmpbuf_set_ptr(tmpbuf, tbl);
 			tbl[0] = 1 /* length of local var table */; tbl[1] = id /* internal id */;
-                        tbl[2] = tmpbuf;
+                        rb_ast_add_local_table(p->ast, tbl);
 
 			switch (nd_type($2)) {
 			  case NODE_LASGN:
@@ -2899,7 +2920,6 @@ primary		: literal
 			/* {|*internal_id| <m> = internal_id; ... } */
 			args = new_args(p, m, 0, id, 0, new_args_tail(p, 0, 0, 0, &@2), &@2);
 			scope = NEW_NODE(NODE_SCOPE, tbl, $5, args, &@$);
-                        RB_OBJ_WRITTEN(p->ast, Qnil, tmpbuf);
 			$$ = NEW_FOR($4, scope, &@$);
 			fixpos($$, $2);
 #endif
@@ -4821,6 +4841,21 @@ f_arglist	: '(' f_args rparen
 			$$ = $2;
 #endif
 			{VALUE v1,v2;v1=$2;v2=dispatch1(paren,v1);$$=v2;}
+			SET_LEX_STATE(EXPR_BEG);
+			p->command_start = TRUE;
+		    }
+		| '(' f_arg ',' args_forward rparen
+		    {
+			arg_var(p, idFWD_REST);
+#if idFWD_KWREST
+			arg_var(p, idFWD_KWREST);
+#endif
+			arg_var(p, idFWD_BLOCK);
+#if 0
+			$$ = new_args_tail(p, Qnone, idFWD_KWREST, idFWD_BLOCK, &@4);
+			$$ = new_args(p, $2, Qnone, idFWD_REST, Qnone, $$, &@4);
+#endif
+			{VALUE v1,v2;v1=params_new($2, Qnone, $4, Qnone, Qnone, Qnone, Qnone);v2=dispatch1(paren,v1);$$=v2;}
 			SET_LEX_STATE(EXPR_BEG);
 			p->command_start = TRUE;
 		    }
@@ -8737,11 +8772,12 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
 	kw = rb_reserved_word(tok(p), toklen(p));
 	if (kw) {
 	    enum lex_state_e state = p->lex.state;
-	    SET_LEX_STATE(kw->state);
 	    if (IS_lex_state_for(state, EXPR_FNAME)) {
+		SET_LEX_STATE(EXPR_ENDFN);
 		set_yylval_name(rb_intern2(tok(p), toklen(p)));
 		return kw->id[0];
 	    }
+	    SET_LEX_STATE(kw->state);
 	    if (IS_lex_state(EXPR_BEG)) {
 		p->command_start = TRUE;
 	    }
@@ -9495,15 +9531,16 @@ yylex(YYSTYPE *lval, YYLTYPE *yylloc, struct parser_params *p)
     p->lval = lval;
     lval->val = Qundef;
     t = parser_yylex(p);
-    if (has_delayed_token(p))
-	dispatch_delayed_token(p, t);
-    else if (t != 0)
-	dispatch_scan_event(p, t);
 
     if (p->lex.strterm && (p->lex.strterm->flags & STRTERM_HEREDOC))
 	RUBY_SET_YYLLOC_FROM_STRTERM_HEREDOC(*yylloc);
     else
 	RUBY_SET_YYLLOC(*yylloc);
+
+    if (has_delayed_token(p))
+	dispatch_delayed_token(p, t);
+    else if (t != 0)
+	dispatch_scan_event(p, t);
 
     return t;
 }
@@ -11826,12 +11863,9 @@ local_tbl(struct parser_params *p)
     int cnt = cnt_args + cnt_vars;
     int i, j;
     ID *buf;
-    VALUE tbl = 0;
 
     if (cnt <= 0) return 0;
-    tbl = rb_imemo_tmpbuf_auto_free_pointer();
     buf = ALLOC_N(ID, cnt + 2);
-    rb_imemo_tmpbuf_set_ptr(tbl, buf);
     MEMCPY(buf+1, p->lvtbl->args->tbl, ID, cnt_args);
     /* remove IDs duplicated to warn shadowing */
     for (i = 0, j = cnt_args+1; i < cnt_vars; ++i) {
@@ -11842,11 +11876,9 @@ local_tbl(struct parser_params *p)
     }
     if (--j < cnt) {
 	REALLOC_N(buf, ID, (cnt = j) + 2);
-	rb_imemo_tmpbuf_set_ptr(tbl, buf);
     }
     buf[0] = cnt;
-    buf[cnt + 1] = (ID)tbl;
-    RB_OBJ_WRITTEN(p->ast, Qnil, tbl);
+    rb_ast_add_local_table(p->ast, buf);
 
     return buf;
 }
@@ -12156,12 +12188,13 @@ reg_named_capture_assign_iter(const OnigUChar *name, const OnigUChar *name_end,
     NODE *node, *succ;
 
     if (!len) return ST_CONTINUE;
-    if (len < MAX_WORD_LENGTH && rb_reserved_word(s, (int)len))
-        return ST_CONTINUE;
     if (rb_enc_symname_type(s, len, enc, (1U<<ID_LOCAL)) != ID_LOCAL)
         return ST_CONTINUE;
 
     var = intern_cstr(s, len, enc);
+    if (len < MAX_WORD_LENGTH && rb_reserved_word(s, (int)len)) {
+        if (!lvar_defined(p, var)) return ST_CONTINUE;
+    }
     node = node_assign(p, assignable(p, var, 0, arg->loc), NEW_LIT(ID2SYM(var), arg->loc), arg->loc);
     succ = arg->succ_block;
     if (!succ) succ = NEW_BEGIN(0, arg->loc);
@@ -12682,7 +12715,6 @@ count_char(const char *str, int c)
 RUBY_FUNC_EXPORTED size_t
 rb_yytnamerr(struct parser_params *p, char *yyres, const char *yystr)
 {
-    YYUSE(p);
     if (*yystr == '"') {
 	size_t yyn = 0, bquote = 0;
 	const char *yyp = yystr;
