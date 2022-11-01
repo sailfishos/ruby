@@ -49,6 +49,10 @@ extern int yydebug;
 # define YYTOKENTYPE
   enum yytokentype
   {
+    YYEMPTY = -2,
+    YYerror = 256,                 /* error  */
+    YYUNDEF = 257,                 /* "invalid token"  */
+
     END_OF_INPUT = 0,
     keyword_class = 258,
     keyword_module = 259,
