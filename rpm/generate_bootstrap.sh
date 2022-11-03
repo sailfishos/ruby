@@ -1,4 +1,9 @@
 #!/bin/sh -e
+# Before running this install:
+# ruby
+# make
+# autoconf
+# automake
 
 die()
 {
@@ -14,7 +19,7 @@ isolate_git_submodule()
 # https://bugs.ruby-lang.org/issues/17132
 {
     cp --archive "$1" "$1.git"
-    rm "$1.git/.git"
+    rm -rf "$1.git/.git"
     mkdir "$1.git/.git"
     cp --archive .git/modules/$1/* $1.git/.git/.
     sed -e '/worktree/d' -i $1.git/.git/config
