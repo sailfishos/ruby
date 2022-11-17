@@ -1,0 +1,26 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Hiroshi SHIBATA <hsbt@ruby-lang.org>
+Date: Thu, 19 Dec 2019 10:18:52 +0900
+Subject: [PATCH] Gem::Specification#date is set automatically by RubyGems.org.
+
+(cherry picked from commit fdd475386d25948fc9c82930c9c7e2feb6e69e84)
+---
+ ext/io/console/io-console.gemspec | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/ext/io/console/io-console.gemspec b/ext/io/console/io-console.gemspec
+index 814bd4ef7d483e54293616d154cdd263f4f744fd..297c994de915904d4f50155f8a1d6b129e7c6809 100644
+--- a/ext/io/console/io-console.gemspec
++++ b/ext/io/console/io-console.gemspec
+@@ -1,11 +1,9 @@
+ # -*- ruby -*-
+ _VERSION = "0.5.6"
+-date = %w$Date::                           $[1]
+ 
+ Gem::Specification.new do |s|
+   s.name = "io-console"
+   s.version = _VERSION
+-  s.date = date
+   s.summary = "Console interface"
+   s.email = "nobu@ruby-lang.org"
+   s.description = "add console capabilities to IO instances."
