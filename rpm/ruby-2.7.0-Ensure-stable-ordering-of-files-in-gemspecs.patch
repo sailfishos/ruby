@@ -1,0 +1,83 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Martin Kampas <martin.kampas@jolla.com>
+Date: Thu, 17 Nov 2022 10:32:53 +0100
+Subject: [PATCH] Ensure stable ordering of files in gemspecs
+
+---
+ ext/openssl/openssl.gemspec | 4 ++--
+ lib/bundler/bundler.gemspec | 2 +-
+ lib/logger/logger.gemspec   | 2 +-
+ lib/readline.gemspec        | 2 +-
+ lib/reline/reline.gemspec   | 2 +-
+ 5 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/ext/openssl/openssl.gemspec b/ext/openssl/openssl.gemspec
+index c22eece7d6bee1b2e4effb2a65dbaaa9a3096461..acffff286b6ed10e34c7b391bd1e52e7f36e05cf 100644
+--- a/ext/openssl/openssl.gemspec
++++ b/ext/openssl/openssl.gemspec
+@@ -8,11 +8,11 @@
+   spec.homepage      = "https://github.com/ruby/openssl"
+   spec.license       = "Ruby"
+ 
+-  spec.files         = Dir["lib/**/*.rb", "ext/**/*.{c,h,rb}", "*.md", "BSDL", "LICENSE.txt"]
++  spec.files         = Dir["lib/**/*.rb", "ext/**/*.{c,h,rb}", "*.md", "BSDL", "LICENSE.txt"].sort
+   spec.require_paths = ["lib"]
+   spec.extensions    = ["ext/openssl/extconf.rb"]
+ 
+-  spec.extra_rdoc_files = Dir["*.md"]
++  spec.extra_rdoc_files = Dir["*.md"].sort
+   spec.rdoc_options = ["--main", "README.md"]
+ 
+   spec.required_ruby_version = ">= 2.3.0"
+diff --git a/lib/bundler/bundler.gemspec b/lib/bundler/bundler.gemspec
+index 30a21f155f52200b98bfb87f9e2e1bf9811d07a6..aef24a0126ac8f3ce9fd1917e5e958ac80ca1a24 100644
+--- a/lib/bundler/bundler.gemspec
++++ b/lib/bundler/bundler.gemspec
+@@ -34,7 +34,7 @@
+   s.required_ruby_version     = ">= 2.3.0"
+   s.required_rubygems_version = ">= 2.5.2"
+ 
+-  s.files = (Dir.glob("lib/bundler/**/*", File::FNM_DOTMATCH) + Dir.glob("man/bundler*") + Dir.glob("libexec/bundle*")).reject {|f| File.directory?(f) }
++  s.files = (Dir.glob("lib/bundler/**/*", File::FNM_DOTMATCH) + Dir.glob("man/bundler*") + Dir.glob("libexec/bundle*")).reject {|f| File.directory?(f) }.sort
+ 
+   s.files += ["lib/bundler.rb"]
+ 
+diff --git a/lib/logger/logger.gemspec b/lib/logger/logger.gemspec
+index 8b3f70627a4c088202d9f43e12b752e2515912da..a377300088dfa3904172ba06b6671c20f21a6a0b 100644
+--- a/lib/logger/logger.gemspec
++++ b/lib/logger/logger.gemspec
+@@ -15,7 +15,7 @@
+   spec.homepage      = "https://github.com/ruby/logger"
+   spec.license       = "BSD-2-Clause"
+ 
+-  spec.files         = Dir.glob("lib/**/*.rb") + ["logger.gemspec"]
++  spec.files         = Dir.glob("lib/**/*.rb").sort + ["logger.gemspec"]
+   spec.bindir        = "exe"
+   spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
+   spec.require_paths = ["lib"]
+diff --git a/lib/readline.gemspec b/lib/readline.gemspec
+index 5c641a88a5d287d1133035a35d6962e9deed0583..8811d19c6622c5467b4b356808c32780ebe72c20 100644
+--- a/lib/readline.gemspec
++++ b/lib/readline.gemspec
+@@ -14,7 +14,7 @@
+   spec.homepage      = 'https://github.com/ruby/readline'
+   spec.license       = 'Ruby license'
+ 
+-  spec.files         = Dir['BSDL', 'COPYING', 'README.md', 'lib/readline.rb']
++  spec.files         = Dir['BSDL', 'COPYING', 'README.md', 'lib/readline.rb'].sort
+   spec.require_paths = ['lib']
+ 
+   spec.post_install_message = <<~EOM
+diff --git a/lib/reline/reline.gemspec b/lib/reline/reline.gemspec
+index 1962f61defac09e401b5f2690faec9f227b086d1..75603cf47617e51249ac7f97886a9042f001f600 100644
+--- a/lib/reline/reline.gemspec
++++ b/lib/reline/reline.gemspec
+@@ -14,7 +14,7 @@
+   spec.homepage      = 'https://github.com/ruby/reline'
+   spec.license       = 'Ruby'
+ 
+-  spec.files         = Dir['BSDL', 'COPYING', 'README.md', 'lib/**/*']
++  spec.files         = Dir['BSDL', 'COPYING', 'README.md', 'lib/**/*'].sort
+   spec.require_paths = ['lib']
+ 
+   spec.required_ruby_version = Gem::Requirement.new('>= 2.5')

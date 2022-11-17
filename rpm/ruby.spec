@@ -197,6 +197,8 @@ Patch20: ruby-3.1.0-vcs.rb-continue-just-with-warning-if-failed-to-fetch.patch
 Patch21: ruby-3.0.0-Revert-Bug-17021-Make-host_-values-consistent-with-t.patch
 # Fix build reproducibility
 Patch22: ruby-2.7.0-Gem-Specification-date-is-set-automatically-by-RubyG.patch
+# Fix build reproducibility
+Patch23: ruby-2.7.0-Ensure-stable-ordering-of-files-in-gemspecs.patch
 
 Requires: %{name}-libs%{?_isa} = %{version}-%{release}
 Suggests: rubypick
