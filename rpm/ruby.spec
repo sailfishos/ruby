@@ -339,10 +339,6 @@ Requires:   ruby(rubygems) >= %{rubygems_version}
 Requires:   ruby-default-gems >= %{ruby_version}
 Provides:   irb = %{version}-%{release}
 Provides:   rubygem(irb) = %{version}-%{release}
-# Obsoleted by Ruby 2.6 in F30 timeframe.
-Provides:   ruby(irb) = %{ruby_version}-%{release}
-Provides:   ruby-irb = %{ruby_version}-%{release}
-Obsoletes:  ruby-irb < %{ruby_version}-%{release}
 BuildArch:  noarch
 
 %description -n rubygem-irb
